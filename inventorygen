@@ -1,0 +1,76 @@
+#!/usr/bin/env python
+import argparse
+import datetime
+import os
+
+import yaml
+from utils.inventory import Inventory, PaperInfo
+
+
+def get_paper_name(data_dir):
+    return os.path.basename(data_dir)
+
+
+def get_year_conf(date, conf):
+    for year_conf in conf['yearconf']:
+        if date >= year_conf['from'] and date <= year_conf['to']:
+            return year_conf
+    return conf['default']
+
+
+def prepare_paperInfo(config, doc, paper_name):
+    doc_abs_path = os.path.join(config['datapath'], doc)
+    elts = doc.split('_')
+    doc_date = datetime.datetime.strptime(elts[0], "%Y-%m-%d").date()
+    year_conf = get_year_conf(doc_date, config)
+    paperID = paper_name
+    pages_itr = os.scandir(os.path.join(doc_abs_path, 'PAGEPDF'))
+    num_pages = 0
+    for f in pages_itr:
+        if not f.name.startswith('.'):
+            num_pages += 1
+    return PaperInfo(type=year_conf['type'], paperID=paperID,
+                     callNumber=year_conf['callNumber'],
+                     title=year_conf['title'],
+                     titleCollection=year_conf['titleCollection'],
+                     subTitle=year_conf['subTitle'],
+                     printer=year_conf['printer'],
+                     publisher=year_conf['publisher'],
+                     day=doc_date.strftime("%d"),
+                     month=doc_date.strftime("%m"),
+                     year=doc_date.strftime("%Y"),
+                     pages=f"{num_pages}",
+                     languages=year_conf['languages'])
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--config-file", type=str, default="conf.yml",
+                        help="Specify configuration file. Default to conf.yml")
+    parser.add_argument("-d", "--data-path", type=str, default=None,
+                        help="Directory containing data to parse. Overrides datapath set in the config file")
+    parser.add_argument("-p", "--project-name", type=str, default=None,
+                        help="Project name, Overrides project set in the config file")
+    parser.add_argument("-o", "--output-file", type=str, default=None,
+                        help="Output inventory file")
+    args = parser.parse_args()
+
+    with open(args.config_file) as f:
+        config = yaml.safe_load(f)
+    if args.data_path:
+        config['datapath'] = args.data_path
+    if args.project_name:
+        config['project'] = args.project_name
+    if args.output_file:
+        config['outputfile'] = args.output_file
+
+    data_dir = config['datapath']
+    paper_name = get_paper_name(data_dir)
+    inventory = Inventory(config['project'])
+    os.walk()
+    for doc in os.listdir(data_dir):
+        paperInfo = prepare_paperInfo(config, doc, paper_name)
+        inventory.add_document(f"{paper_name}_{doc}", paperInfo)
+    inventory.write(config['outputfile'])
+
+#m122 Lundi / Vendredi
