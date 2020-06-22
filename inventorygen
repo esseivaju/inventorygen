@@ -2,9 +2,22 @@
 import argparse
 import datetime
 import os
+import re
+import sys
+import logging
 
 import yaml
 from utils.inventory import Inventory, PaperInfo
+
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(filename="log.inventorygen.err", filemode='w', style='{', format="{asctime} | {levelname} | {name} | {module} | {message}",level=logging.WARNING)
+
+DATE_FORMATS = [
+    "%Y-%m-%d",
+    "%Y_%m_%d",
+    "%Y"
+]
 
 
 def get_paper_name(data_dir):
@@ -12,23 +25,77 @@ def get_paper_name(data_dir):
 
 
 def get_year_conf(date, conf):
+    if date is None:
+        return conf['default']
     for year_conf in conf['yearconf']:
         if date >= year_conf['from'] and date <= year_conf['to']:
             return year_conf
     return conf['default']
 
 
-def prepare_paperInfo(config, doc, paper_name):
-    doc_abs_path = os.path.join(config['datapath'], doc)
-    elts = doc.split('_')
-    doc_date = datetime.datetime.strptime(elts[0], "%Y-%m-%d").date()
+def is_tif(filename):
+    return re.match(r".*\.tif", filename) is not None
+
+
+def contains_tif_files(filenames):
+    count = 0
+    for filename in filenames:
+        if is_tif(filename):
+            count += 1
+    return count
+
+
+def parse_to_date(repr):
+    for date_format in DATE_FORMATS:
+        try:
+            doc_date = datetime.datetime.strptime(repr, date_format).date()
+        except ValueError:
+            pass
+        else:
+            return doc_date
+
+
+def extract_date(filename: str):
+    filename = filename[:filename.rfind('.')]  # remove file extension
+    # remove any non-digit char at the beginning of the filename
+    for i, c in zip(range(len(filename)), filename):
+        if c.isdigit():
+            filename = filename[i:]
+            break
+
+    digits_sequences = list()
+    current_digits_seq = str()
+    for char in filename:
+        if char.isdigit():
+            current_digits_seq += char
+        elif current_digits_seq:
+            digits_sequences.append(current_digits_seq)
+            current_digits_seq = str()
+    if current_digits_seq:
+        digits_sequences.append(current_digits_seq)
+
+    doc_date = parse_to_date(filename)
+
+    if doc_date:
+        return doc_date
+
+    date_join = "-".join(digits_sequences[:min(3, len(digits_sequences))])
+    doc_date = parse_to_date(date_join)
+    if doc_date:
+        return doc_date
+
+    doc_date = parse_to_date(digits_sequences[0])
+    if doc_date:
+        return doc_date
+    return None
+
+
+def prepare_paperInfo(config, directory:  str, paper_name, filenames, tif_count):
+    tif_files = [x for x in filenames if is_tif(x)]
+    tif_file = tif_files[0]
+    doc_date = extract_date(tif_file)
     year_conf = get_year_conf(doc_date, config)
     paperID = paper_name
-    pages_itr = os.scandir(os.path.join(doc_abs_path, 'PAGEPDF'))
-    num_pages = 0
-    for f in pages_itr:
-        if not f.name.startswith('.'):
-            num_pages += 1
     return PaperInfo(type=year_conf['type'], paperID=paperID,
                      callNumber=year_conf['callNumber'],
                      title=year_conf['title'],
@@ -36,10 +103,10 @@ def prepare_paperInfo(config, doc, paper_name):
                      subTitle=year_conf['subTitle'],
                      printer=year_conf['printer'],
                      publisher=year_conf['publisher'],
-                     day=doc_date.strftime("%d"),
-                     month=doc_date.strftime("%m"),
-                     year=doc_date.strftime("%Y"),
-                     pages=f"{num_pages}",
+                     day=doc_date.strftime("%d") if doc_date else None,
+                     month=doc_date.strftime("%m") if doc_date else None,
+                     year=doc_date.strftime("%Y") if doc_date else None,
+                     pages=f"{tif_count}",
                      languages=year_conf['languages'])
 
 
@@ -55,6 +122,9 @@ if __name__ == "__main__":
                         help="Output inventory file")
     args = parser.parse_args()
 
+    if not os.path.isfile(args.config_file):
+        logger.critical(f"Specified config file {args.config_file} doesn't exist. Aborting.")
+        sys.exit(1)
     with open(args.config_file) as f:
         config = yaml.safe_load(f)
     if args.data_path:
@@ -65,10 +135,17 @@ if __name__ == "__main__":
         config['outputfile'] = args.output_file
 
     data_dir = config['datapath']
+    if not os.path.isdir(data_dir):
+        logger.critical(f"Specified data directory {data_dir} doesn't exist. Aborting.")
+        sys.exit(1)
     paper_name = get_paper_name(data_dir)
     inventory = Inventory(config['project'])
-    os.walk()
-    for doc in os.listdir(data_dir):
-        paperInfo = prepare_paperInfo(config, doc, paper_name)
-        inventory.add_document(f"{paper_name}_{doc}", paperInfo)
-    inventory.write(config['outputfile'])
+    for directory, subdirs, files in os.walk(data_dir):
+        tif_count = contains_tif_files(files)
+        if tif_count and not subdirs:
+            paperInfo = prepare_paperInfo(config, directory, paper_name, files, tif_count)
+            doc_id = f"{paper_name}_{os.path.basename(directory)}"
+            doc_id = doc_id.replace(" ", "_")
+            inventory.add_document(doc_id, paperInfo)
+    if len(inventory):
+        inventory.write(config['outputfile'])

@@ -81,5 +81,8 @@ class Inventory:
         doc = Document(id, paperInfo)
         self.__documents.append(doc.element())
 
+    def __len__(self):
+        return len(self.__documents)
+
     def write(self, filename):
         self.__xml.write(filename)
