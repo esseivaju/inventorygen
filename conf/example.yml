@@ -1,0 +1,34 @@
+project: ExampleProject
+datapath: /Volumes/NB84/ninestars_data/03-31-2020/data/NVB
+outputfile: inventory_nvb.xml
+default: # Default attributes used for issues with no matching yearconf
+  type: Newspaper
+  callNumber: callNumberDef
+  title: TitleDef
+  titleCollection: Title CollectionDef
+  subTitle: subTitleDef
+  printer: printerDef
+  publisher: publisherDef
+  languages: [fr, de]
+
+yearconf: # Specify attributes for a given interval
+  - from: 1866-01-01
+    to: 1989-12-31
+    type: Newspaper
+    callNumber: callNumber1
+    title: Title1
+    titleCollection: Title Collection1
+    subTitle: subTitle1
+    printer: printer1
+    publisher: publisher1
+    languages: [fr, de]
+  - from: 1990-01-01
+    to: 1990-12-31
+    type: Newspaper
+    callNumber: callNumber2
+    title: Title2
+    titleCollection: Title Collection2
+    subTitle: subTitle2
+    printer: printer2
+    publisher: publisher2
+    languages: [en]
