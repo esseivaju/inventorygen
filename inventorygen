@@ -72,5 +72,3 @@ if __name__ == "__main__":
         paperInfo = prepare_paperInfo(config, doc, paper_name)
         inventory.add_document(f"{paper_name}_{doc}", paperInfo)
     inventory.write(config['outputfile'])
-
-#m122 Lundi / Vendredi
