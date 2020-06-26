@@ -22,7 +22,7 @@ DATE_FORMATS = [
 def configure_logging():
     handlers = []
     handlers.append(logging.StreamHandler(sys.stdout))
-    handlers.append(logging.FileHandler('log.inventorygen.err', 'w'))
+    handlers.append(logging.FileHandler('log.inventorygen', 'w'))
     logging.basicConfig(handlers=handlers, level=logging.WARNING,
                         style='{', format="{asctime} | {levelname} | {name} | {module} | {message}")
 
