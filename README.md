@@ -14,8 +14,8 @@ pip install .
 Inventorygen will install the CLI script and requires a configuration file is required.
 If it is not specified, it will look for a file named ```conf.yml``` in the current directory.
 ```bash
-usage: inventorygen [-h] [-c CONFIG_FILE] [-d DATA_PATH] [-p PROJECT_NAME]
-                    [-o OUTPUT_FILE]
+usage: inventorygen [-h] [-c CONFIG_FILE] -d DATA_PATH [-p PROJECT_NAME] -o
+                    OUTPUT_FILE
 ```
 
 The script will then parse the data directory recursively using ```os.walk``` looking for TIF files. 
