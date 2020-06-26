@@ -101,6 +101,8 @@ def prepare_paperInfo(config, directory:  str, paper_name, filenames, tif_count)
     tif_files = [x for x in filenames if is_tif(x)]
     tif_file = tif_files[0]
     doc_date = extract_date(tif_file)
+    if not doc_date:
+        logging.warning(f"Date for paper {directory} couldn't be parsed")
     year_conf = get_year_conf(doc_date, config)
     paperID = paper_name
     return PaperInfo(type=year_conf['type'], paperID=paperID,
@@ -151,6 +153,7 @@ if __name__ == "__main__":
     inventory = Inventory(config['project'])
     for directory, subdirs, files in os.walk(data_dir):
         tif_count = contains_tif_files(files)
+        logger.debug(f"Found tif files in {directory}")
         if tif_count and not subdirs:
             paperInfo = prepare_paperInfo(config, directory, paper_name, files, tif_count)
             doc_id = f"{paper_name}_{os.path.basename(directory)}"
