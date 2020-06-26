@@ -27,11 +27,11 @@ def configure_logging():
                         style='{', format="{asctime} | {levelname} | {name} | {module} | {message}")
 
 
-def get_paper_name(data_dir):
+def get_paper_name(data_dir: str):
     return os.path.basename(data_dir)
 
 
-def get_year_conf(date, conf):
+def get_year_conf(date: datetime.date, conf: dict):
     if date is None:
         return conf['default']
     for year_conf in conf['yearconf']:
@@ -40,11 +40,16 @@ def get_year_conf(date, conf):
     return conf['default']
 
 
-def is_tif(filename):
-    return re.match(r".*\.tif", filename) is not None
+def is_tif(filename: str, use_extension: bool = True):
+    if use_extension:
+        return re.match(r".*\.tif", filename) is not None
+    else:
+        with open(filename, 'rb') as f:
+            r = f.read(4)
+            return r == b'\x49\x49\x2A\x00' or r == b'\x4D\x4D\x00\x2A'
 
 
-def contains_tif_files(filenames):
+def contains_tif_files(filenames: list):
     count = 0
     for filename in filenames:
         if is_tif(filename):
@@ -52,7 +57,7 @@ def contains_tif_files(filenames):
     return count
 
 
-def parse_to_date(repr):
+def parse_to_date(repr: str):
     for date_format in DATE_FORMATS:
         try:
             doc_date = datetime.datetime.strptime(repr, date_format).date()
@@ -97,7 +102,7 @@ def extract_date(filename: str):
     return None
 
 
-def prepare_paperInfo(config, directory:  str, paper_name, filenames, tif_count):
+def prepare_paperInfo(config, directory:  str, paper_name: str, filenames: list, tif_count: int):
     tif_files = [x for x in filenames if is_tif(x)]
     tif_file = tif_files[0]
     doc_date = extract_date(tif_file)
