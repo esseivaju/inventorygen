@@ -6,7 +6,7 @@ setup(
     description="Tool to generate inventory files for the BnL Namalysator.",
     version="0.1",
     packages=find_packages(),
-    scripts=["inventorygen"],
+    scripts=["bin/inventorygen"],
     install_requires=[
         "PyYAML>=5.3.1"
     ]
