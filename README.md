@@ -7,8 +7,8 @@ CLI script to generate an inventory file from the data to be processed with the 
 Inventorygen requires python 3.7 and should be installed in a virtual environment.
 
 ```bash
-conda create -ninventorygen pyhton=3.7
-conda activate inventoygen
+conda create -ninventorygen python=3.7
+conda activate inventorygen
 pip install .
 inventorygen --help
 ```
