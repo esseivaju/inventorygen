@@ -17,8 +17,20 @@ inventorygen --help
 Inventorygen will install the CLI script and requires a configuration file is required.
 If it is not specified, it will look for a file named ```conf.yml``` in the current directory.
 ```bash
-usage: inventorygen [-h] [-c CONFIG_FILE] -d DATA_PATH [-p PROJECT_NAME] -o
-                    OUTPUT_FILE
+usage: inventorygen [-h] [-c CONFIG_FILE] [-d DATA_PATH] [-p PROJECT_NAME]
+                    [-o OUTPUT_FILE]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -c CONFIG_FILE, --config-file CONFIG_FILE
+                        Specify configuration file. Default to conf.yml
+  -d DATA_PATH, --data-path DATA_PATH
+                        Directory containing data to parse. Overrides datapath
+                        set in the config file
+  -p PROJECT_NAME, --project-name PROJECT_NAME
+                        Project name, Overrides project set in the config file
+  -o OUTPUT_FILE, --output-file OUTPUT_FILE
+                        Output inventory file
 ```
 
 The script will then parse the data directory recursively using ```os.walk``` looking for TIF files. 
