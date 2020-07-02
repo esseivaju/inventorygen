@@ -102,15 +102,9 @@ def extract_date(filename: str):
     return None
 
 
-def prepare_paperInfo(config, directory:  str, paper_name: str, filenames: list, tif_count: int):
-    tif_files = [x for x in filenames if is_tif(x)]
-    tif_file = tif_files[0]
-    doc_date = extract_date(tif_file)
-    if not doc_date:
-        logging.warning(f"Date for paper {directory} couldn't be parsed")
+def prepare_paperInfo(config, doc_date:  datetime.date, paper_name: str, tif_count: int):
     year_conf = get_year_conf(doc_date, config)
-    paperID = paper_name
-    return PaperInfo(type=year_conf['type'], paperID=paperID,
+    return PaperInfo(type=year_conf['type'], paperID=paper_name,
                      callNumber=year_conf['callNumber'],
                      title=year_conf['title'],
                      titleCollection=year_conf['titleCollection'],
@@ -124,18 +118,30 @@ def prepare_paperInfo(config, directory:  str, paper_name: str, filenames: list,
                      languages=year_conf['languages'])
 
 
+def find_documents_in_dir(directory: str, files: list):
+    doc_count = dict()
+    for file in files:
+        file_date = extract_date(file)
+        if file_date is None:
+            logger.warning(f"Couldn't parse date in file {file}")
+        elif file_date not in doc_count:
+            tmp = list()
+            doc_count[file_date] = tmp
+        doc_count[file_date].append(file)
+    return doc_count
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    required = parser.add_argument_group("required arguments")
     parser.add_argument("-c", "--config-file", type=str, default="conf.yml",
                         help="Specify configuration file. Default to conf.yml")
-    required.add_argument("-d", "--data-path",
-                          type=str, default=None, required=True,
+    parser.add_argument("-d", "--data-path",
+                          type=str, default=None,
                           help="Directory containing data to parse. Overrides datapath set in the config file")
     parser.add_argument("-p", "--project-name", type=str, default=None,
                         help="Project name, Overrides project set in the config file")
-    required.add_argument("-o", "--output-file",
-                          type=str, default=None, required=True,
+    parser.add_argument("-o", "--output-file",
+                          type=str, default=None,
                           help="Output inventory file")
     args = parser.parse_args()
 
@@ -163,9 +169,11 @@ if __name__ == "__main__":
         tif_count = contains_tif_files(files)
         logger.debug(f"Found tif files in {directory}")
         if tif_count and not subdirs:
-            paperInfo = prepare_paperInfo(config, directory, paper_name, files, tif_count)
-            doc_id = f"{paper_name}_{os.path.basename(directory)}"
-            doc_id = doc_id.replace(" ", "_")
-            inventory.add_document(doc_id, paperInfo)
+            documents = find_documents_in_dir(directory, files)
+            for document, docfiles in documents.items():
+                paperInfo = prepare_paperInfo(config, document, paper_name, len(docfiles))
+                doc_id = f"{paper_name}_{document}"
+                doc_id = doc_id.replace(" ", "_")
+                inventory.add_document(doc_id, paperInfo)
     if len(inventory):
         inventory.write(config['outputfile'])
