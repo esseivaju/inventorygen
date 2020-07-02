@@ -13,6 +13,12 @@ pip install .
 inventorygen --help
 ```
 
+After the script has been installed for the first time, subsequent use only require to activate  the environment:
+```bash
+conda activate inventorygen
+inventorygen --help
+```
+
 ## Usage
 Inventorygen will install the CLI script and requires a configuration file is required.
 If it is not specified, it will look for a file named ```conf.yml``` in the current directory.
@@ -34,7 +40,7 @@ optional arguments:
 ```
 
 The script will then parse the data directory recursively using ```os.walk``` looking for TIF files. 
-Each directory containing at least one TIF image will be considered as a document entry in the inventory file.
+Each directory containing at least one TIF image will be considered as one or more document entries in the inventory file.
 The script will then extract the number of pages and date of the document.
 The date is used to determine which section (```default``` or ```yearconf``` interval) of the configuration file should be used for other to apply other settings.
 Logs are generated in log.inventorygen
