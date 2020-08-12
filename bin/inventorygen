@@ -22,9 +22,10 @@ DATE_FORMATS = [
 def configure_logging():
     handlers = []
     handlers.append(logging.StreamHandler(sys.stdout))
-    handlers.append(logging.FileHandler('log.inventorygen', 'w'))
-    logging.basicConfig(handlers=handlers, level=logging.WARNING,
-                        style='{', format="{asctime} | {levelname} | {name} | {module} | {message}")
+    handlers.append(logging.FileHandler('inventorygen.log', 'w'))
+    logging.basicConfig(handlers=handlers, level=logging.INFO,
+                        style='{',
+                        format="{asctime} | {levelname} | {name} | {module} | {message}")
 
 
 def get_paper_name(data_dir: str):
@@ -40,19 +41,14 @@ def get_year_conf(date: datetime.date, conf: dict):
     return conf['default']
 
 
-def is_tif(filename: str, use_extension: bool = True):
-    if use_extension:
-        return re.match(r".*\.tif", filename) is not None
-    else:
-        with open(filename, 'rb') as f:
-            r = f.read(4)
-            return r == b'\x49\x49\x2A\x00' or r == b'\x4D\x4D\x00\x2A'
+def is_supported_file_format(filename: str):
+    return re.match(r".*\.(?:tif|jp2|pdf)", filename) is not None
 
 
-def contains_tif_files(filenames: list):
+def contains_supported_files(filenames: list):
     count = 0
     for filename in filenames:
-        if is_tif(filename):
+        if is_supported_file_format(filename):
             count += 1
     return count
 
@@ -102,20 +98,20 @@ def extract_date(filename: str):
     return None
 
 
-def prepare_paperInfo(config, doc_date:  datetime.date, paper_name: str, tif_count: int):
+def prepare_paperInfo(config, doc_date: datetime.date, paper_name: str, tif_count: int):
     year_conf = get_year_conf(doc_date, config)
-    return PaperInfo(type=year_conf['type'], paperID=paper_name,
-                     callNumber=year_conf['callNumber'],
-                     title=year_conf['title'],
-                     titleCollection=year_conf['titleCollection'],
-                     subTitle=year_conf['subTitle'],
-                     printer=year_conf['printer'],
-                     publisher=year_conf['publisher'],
+    return PaperInfo(type=year_conf.get('type'), paperID=paper_name,
+                     callNumber=year_conf.get('callNumber'),
+                     title=year_conf.get('title'),
+                     titleCollection=year_conf.get('titleCollection'),
+                     subTitle=year_conf.get('subTitle'),
+                     printer=year_conf.get('printer'),
+                     publisher=year_conf.get('publisher'),
                      day=doc_date.strftime("%d") if doc_date else None,
                      month=doc_date.strftime("%m") if doc_date else None,
                      year=doc_date.strftime("%Y") if doc_date else None,
                      pages=f"{tif_count}",
-                     languages=year_conf['languages'])
+                     languages=year_conf.get('languages'))
 
 
 def find_documents_in_dir(directory: str, files: list):
@@ -135,15 +131,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     required = parser.add_argument_group("required arguments")
     required.add_argument("-c", "--config-file", type=str, required=True,
-                        help="Specify configuration file.")
+                          help="Specify configuration file.")
     parser.add_argument("-d", "--data-path",
-                          type=str, default=None,
-                          help="Directory containing data to parse. Overrides datapath set in the config file")
+                        type=str, default=None,
+                        help="Directory containing data to parse. Overrides datapath set in the config file")
     parser.add_argument("-p", "--project-name", type=str, default=None,
                         help="Project name, Overrides project set in the config file")
     parser.add_argument("-o", "--output-file",
-                          type=str, default=None,
-                          help="Output inventory file")
+                        type=str, default=None,
+                        help="Output inventory file")
     args = parser.parse_args()
 
     configure_logging()
@@ -159,6 +155,8 @@ if __name__ == "__main__":
         config['project'] = args.project_name
     if args.output_file:
         config['outputfile'] = args.output_file
+    if not os.path.isabs(config['outputfile']):
+        config['outputfile'] = os.path.join(os.getcwd(), config['outputfile'])
 
     data_dir = config['datapath']
     if not os.path.isdir(data_dir):
@@ -167,7 +165,7 @@ if __name__ == "__main__":
     paper_name = get_paper_name(data_dir)
     inventory = Inventory(config['project'])
     for directory, subdirs, files in os.walk(data_dir):
-        tif_count = contains_tif_files(files)
+        tif_count = contains_supported_files(files)
         logger.debug(f"Found tif files in {directory}")
         if tif_count and not subdirs:
             documents = find_documents_in_dir(directory, files)
@@ -177,4 +175,5 @@ if __name__ == "__main__":
                 doc_id = doc_id.replace(" ", "_")
                 inventory.add_document(doc_id, paperInfo)
     if len(inventory):
+        logger.info(f"Inventory file created at {config['outputfile']}")
         inventory.write(config['outputfile'])
