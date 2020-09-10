@@ -1,7 +1,12 @@
+# project name, can be overrided with --project-name
 project: ExampleProject
-datapath: /Volumes/NB84/ninestars_data/03-31-2020/data/NVB
-outputfile: inventory_nvb.xml
-default: # Default attributes used for issues with no matching yearconf
+# data to process, can be overrided with --data-path
+datapath: "/Volumes/Digitalisierung/Zeitungen/Presse Patronale/HGF_Handwerks.u.Gewerbezeitung_Monatsblatt"
+# output inventory file
+outputfile: inventory_pp.xml
+# Default attributes used for issues with no matching yearconf. 
+# fallback if a document has no matching date interval config section
+default:
   type: Newspaper
   callNumber: callNumberDef
   title: TitleDef
@@ -10,8 +15,9 @@ default: # Default attributes used for issues with no matching yearconf
   printer: printerDef
   publisher: publisherDef
   languages: [fr, de]
-
-yearconf: # Specify attributes for a given interval
+# Specify attributes for a given date interval
+# intervals should not overlad
+yearconf:
   - from: 1866-01-01
     to: 1989-12-31
     type: Newspaper

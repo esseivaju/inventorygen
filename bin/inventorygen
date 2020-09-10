@@ -12,6 +12,7 @@ from utils.inventory import Inventory, PaperInfo
 
 logger = logging.getLogger(__name__)
 
+# supported date formats
 DATE_FORMATS = [
     "%Y-%m-%d",
     "%Y_%m_%d",
@@ -19,6 +20,7 @@ DATE_FORMATS = [
 ]
 
 
+# Setup logging for the application
 def configure_logging():
     handlers = []
     handlers.append(logging.StreamHandler(sys.stdout))
@@ -28,10 +30,12 @@ def configure_logging():
                         format="{asctime} | {levelname} | {name} | {module} | {message}")
 
 
+# get the paper name, which is the last component of the path given in the -data-path argument
 def get_paper_name(data_dir: str):
     return os.path.basename(data_dir)
 
 
+# returns the config section for a given date or the default config if
 def get_year_conf(date: datetime.date, conf: dict):
     if date is None:
         return conf['default']
@@ -41,10 +45,12 @@ def get_year_conf(date: datetime.date, conf: dict):
     return conf['default']
 
 
+# checks if the file is a tif, jp2 or pdf. Only checks the filename wihtout actually reading the file
 def is_supported_file_format(filename: str):
     return re.match(r".*\.(?:tif|jp2|pdf)", filename) is not None
 
 
+# returns the number of files in 'filenames' that are of a supported type
 def contains_supported_files(filenames: list):
     count = 0
     for filename in filenames:
@@ -53,6 +59,7 @@ def contains_supported_files(filenames: list):
     return count
 
 
+# Tries to parse the date using one of the format listed in DATE_FORMATS
 def parse_to_date(repr: str):
     for date_format in DATE_FORMATS:
         try:
@@ -63,6 +70,9 @@ def parse_to_date(repr: str):
             return doc_date
 
 
+# tries to parse the filename t find a pattern that looks like a date
+# Starts by removing the file extension (right-most '.' and everything after) and any leading non-digit character
+# tries then to parse the remaining filename as well as the digits sequences to a date
 def extract_date(filename: str):
     filename = filename[:filename.rfind('.')]  # remove file extension
     # remove any non-digit char at the beginning of the filename
@@ -98,6 +108,7 @@ def extract_date(filename: str):
     return None
 
 
+# build a Paperinfo from extracted data
 def prepare_paperInfo(config, doc_date: datetime.date, paper_name: str, tif_count: int):
     year_conf = get_year_conf(doc_date, config)
     return PaperInfo(type=year_conf.get('type'), paperID=paper_name,
@@ -114,6 +125,8 @@ def prepare_paperInfo(config, doc_date: datetime.date, paper_name: str, tif_coun
                      languages=year_conf.get('languages'))
 
 
+# find document and group them by date in the filename.
+# returns a dict() with the number of page per document date.
 def find_documents_in_dir(directory: str, files: list):
     doc_count = dict()
     for file in files:
@@ -127,6 +140,7 @@ def find_documents_in_dir(directory: str, files: list):
     return doc_count
 
 
+# setup cli arguments, logging and config
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     required = parser.add_argument_group("required arguments")
@@ -144,6 +158,7 @@ if __name__ == "__main__":
 
     configure_logging()
 
+    # parse config file, override config with cli args if provided
     if not os.path.isfile(args.config_file):
         logger.critical(f"Specified config file {args.config_file} doesn't exist. Aborting.")
         sys.exit(1)
@@ -158,10 +173,14 @@ if __name__ == "__main__":
     if not os.path.isabs(config['outputfile']):
         config['outputfile'] = os.path.join(os.getcwd(), config['outputfile'])
 
+    # check if data_dir is valid
     data_dir = config['datapath']
     if not os.path.isdir(data_dir):
         logger.critical(f"Specified data directory {data_dir} doesn't exist. Aborting.")
         sys.exit(1)
+
+    # Build the inventory object, then search for directories with supported files that are leaf directories
+    # if a directory contains relevant documents, extract properties and add them to the inventory object
     paper_name = get_paper_name(data_dir)
     inventory = Inventory(config['project'])
     for directory, subdirs, files in os.walk(data_dir):
@@ -174,6 +193,7 @@ if __name__ == "__main__":
                 doc_id = f"{paper_name}_{document}"
                 doc_id = doc_id.replace(" ", "_")
                 inventory.add_document(doc_id, paperInfo)
+    # write the inventory to a file
     if len(inventory):
         logger.info(f"Inventory file created at {config['outputfile']}")
         inventory.write(config['outputfile'])

@@ -4,6 +4,13 @@ from datetime import datetime
 from typing import List
 
 
+# XML representation of an inventory file for Bnl namalysator. See the 1.1 technical requirement
+# from BnL for more details regarding the schema
+# XML:
+# <languages>
+#   <language>fr</language>
+#   <language>de</language>
+# </languages>
 class Languages:
 
     def __init__(self, languages: List[str] = None):
